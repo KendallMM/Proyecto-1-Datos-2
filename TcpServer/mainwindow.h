@@ -36,6 +36,7 @@ public:
                               "tarjeta29", "tarjeta30"};
     QHash<QString, QString> reparto;
     bool jugadaIniciada;
+    bool juegoIniciado;
     QByteArray tarjetaAnterior;
     QByteArray tarjetaActual;
     QString vector;
@@ -53,8 +54,12 @@ public slots:
     void definirResultadoFinal();
     void actualizarCronometro();
     void actualizarEstado();
-
+    void inicializarJugada();
     void inicializarJuego();
+    void reiniciarTarjetas();
+    void enviarTarjeta();
+    void enviarPuntos();
+
 
 
 private:

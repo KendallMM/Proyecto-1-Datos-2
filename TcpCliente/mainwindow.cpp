@@ -1,6 +1,7 @@
 #include "mainwindow.h"
 #include "ui_mainwindow.h"
 #include <QHostAddress>
+#include <QInputDialog>
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
     , ui(new Ui::MainWindow),
@@ -11,8 +12,6 @@ MainWindow::MainWindow(QWidget *parent)
     connect(timer, SIGNAL(timeout()), this, SLOT(actualizarEstado()));
     socket.connectToHost(QHostAddress("127.0.0.1"), 9999);
     connect(&socket,SIGNAL(readyRead()),this,SLOT(onReading()));
-
-    connect(ui->sendButton,SIGNAL(pressed()),this,SLOT(onSendButtonPressed()));
     connect(ui->tarjeta01, SIGNAL(clicked()), this, SLOT(tarjetaDescubierta()));
     connect(ui->tarjeta02, SIGNAL(clicked()), this, SLOT(tarjetaDescubierta()));
     connect(ui->tarjeta03, SIGNAL(clicked()), this, SLOT(tarjetaDescubierta()));
@@ -53,52 +52,112 @@ MainWindow::~MainWindow()
 void MainWindow::onReading()
 {
     QByteArray data = socket.readAll();
+    qDebug() << data;
+    if(data=="desechar"){
+        //return tiles from current turn to the default state (remove backgrounds)
+        QPixmap image("/home/kendall/Descargas/Emparejados-master/16.png");
+        tarjetaAnterior->setIcon(image);
+        tarjetaActual->setText("");
+        tarjetaActual->setIcon(image);
+        tarjetaActual->setIconSize(tarjetaActual->rect().size());
+
+        //re-enable both tiles so they can be used on another turn
+        tarjetaActual->blockSignals(false);
+        tarjetaAnterior->blockSignals(false);
+        if(jugador1){
+            puntaje-=5;
+            ui->lblPuntaje->setText(QString::number(puntaje));
+            jugador1=false;
+            ui->checkBoxp1->setChecked(false);
+            ui->checkBoxp2->setChecked(true);
+            }
+        else{
+            puntaje2-=5;
+            ui->lblPuntaje2->setText(QString::number(puntaje2));
+            jugador1=true;
+            ui->checkBoxp1->setChecked(true);
+            ui->checkBoxp2->setChecked(false);
+            }
+        }
+    else if(data=="conservar"){
+        if(jugador1){
+            puntaje+=15;
+            ui->lblPuntaje->setText(QString::number(puntaje));
+            }
+        else{
+            puntaje2+=15;
+            ui->lblPuntaje2->setText(QString::number(puntaje2));
+            }
+    }
+    else if(data=="tiempo"){
+        juegoIniciado=true;
+    }
+    else{
     onReadyRead(tarjetaActual, data);
+    }
+
 }
 void MainWindow::onReadyRead(QPushButton* tarjeta, QByteArray data)
 {
+    qDebug() << "onReadyRead";
     QString encoded = data;
     QPixmap image;
     image.loadFromData(QByteArray::fromBase64(encoded.toLocal8Bit()));
     tarjeta->setText("");
     tarjeta->setIcon(image);
     tarjeta->setIconSize(tarjeta->rect().size());
-    tarjeta->blockSignals(true);
-    ui->textEdit->append(QString::fromStdString(data.toStdString()));
 }
 void MainWindow::onSendButtonPressed()
 {
     qDebug() << "onSendButtonPressed";
-    QString text = ui->lineEdit->text();
-    ui->lineEdit->setText("");
-    socket.write(QByteArray::fromStdString(text.toStdString()));
+    QString tiempo = "tiempo";
+    socket.write(QByteArray::fromStdString(tiempo.toStdString()));;
 }
 void MainWindow::tarjetaDescubierta()
 {
     qDebug("tarjetadesc");
+    enviarPosicion();
+    if(!jugadaIniciada){
+        tarjetaAnterior=tarjetaActual;
+        jugadaIniciada=true;
+    }
+    else {
+        jugadaIniciada=false;
+        QList<QPushButton *> botones =  ui->centralwidget->findChildren<QPushButton*>();
+        foreach (QPushButton* b, botones) {
+            b->blockSignals(true);;
+        }
+        QTimer::singleShot(1000, this, SLOT(waitServer()));
+    }
+}
+void MainWindow::enviarPosicion(){
     tarjetaActual=qobject_cast<QPushButton*>(sender());
+    tarjetaActual->blockSignals(true);
     QString texto = tarjetaActual->objectName();
     socket.write(QByteArray::fromStdString(texto.toStdString()));
 }
-void MainWindow::mezclar(QVector<QString> &tarjetas){
-    qDebug("mezcla");
-    unsigned seed = std::chrono::system_clock::now().time_since_epoch().count();
-    shuffle (tarjetas.begin(), tarjetas.end(), std::default_random_engine(seed));
+void MainWindow::waitServer(){
+    QList<QPushButton *> botones =  ui->centralwidget->findChildren<QPushButton*>();
+    foreach (QPushButton* b, botones) {
+        b->blockSignals(false);;
+    }
 }
 void MainWindow::inicializarJuego(){
     qDebug() << "inicializarJuego";
+    ui->p1->setText(p1name);
+    ui->p2->setText(p2name);
     //start turn
     jugadaIniciada=false;
-
-    //Set score
-    puntaje=0;
-    ui->lblPuntaje->setText(QString::number(puntaje));;
+    juegoIniciado=false;
+    jugador1=true;
+    ui->checkBoxp1->setChecked(true);
+    ui->checkBoxp2->setChecked(false);
 
     //Set matches counter
     parejasRestantes=15;
 
     //Set clock for countdown
-    time.setHMS(0,1,0);
+    time.setHMS(0,0,0);
 
     //Initialize countdown
     ui->cronometro->setText(time.toString("m:ss"));
@@ -106,23 +165,27 @@ void MainWindow::inicializarJuego(){
     // Start timer with a value of 1000 milliseconds, indicating that it will time out every second.
     timer->start(1000);
 
-    //Randomly sort tiles in container
-    mezclar(tarjetas);
 
     //enable tiles frame
     ui->frame->setEnabled(true);
 
     //enable every tile and reset its image
+    QPixmap image("/home/kendall/Descargas/Emparejados-master/16.png");
     QList<QPushButton *> botones =  ui->centralwidget->findChildren<QPushButton*>();
     foreach (QPushButton* b, botones) {
         b->setEnabled(true);
-        b->setStyleSheet("#" + b->objectName() + "{ }");
+        b->setText("");
+        b->setIcon(image);
+        b->setIconSize(b->rect().size());
+
     }
 }
 void MainWindow::actualizarCronometro(){
     qDebug("actCrono");
-    time=time.addSecs(-1);
+    if (juegoIniciado){
+    time=time.addSecs(+1);
     ui->cronometro->setText(time.toString("m:ss"));
+    }
 }
 void MainWindow::definirResultadoFinal(){
     qDebug("result");
@@ -141,19 +204,6 @@ void MainWindow::definirResultadoFinal(){
         }
         else{
             QCoreApplication::quit();
-        }
-    }
-    else{
-        if (time.toString()=="00:00:00"){
-            timer->stop();
-            ui->frame->setEnabled(false);
-            msgBox.setText("Perdiste ;( \n¿Volver a jugar?");
-            if (QMessageBox::Yes == msgBox.exec()){
-                inicializarJuego();
-            }
-            else{
-                QCoreApplication::quit();
-            }
         }
     }
 }

@@ -34,13 +34,17 @@ void MainWindow::onNewConnection()
     QTcpSocket *clientSocket = server.nextPendingConnection();
     // Ready read
         connect(clientSocket, SIGNAL(readyRead()),this,SLOT(onReadyRead()));
+
     // State Changed
         connect(clientSocket, SIGNAL(stateChanged(QAbstractSocket::SocketState)), this,SLOT(onStateChanged(QAbstractSocket::SocketState)));
 
     sockets.push_back(clientSocket);
+    QString texto = "tiempo";
+    for (QTcpSocket* socket : sockets){
+        socket->write(QByteArray::fromStdString(texto.toStdString()));;
+    }
+    juegoIniciado=true;
 }
-
-
 void MainWindow::onStateChanged(QAbstractSocket::SocketState state)
 {
     qDebug() << "onStateChanged";
@@ -54,48 +58,52 @@ void MainWindow::onStateChanged(QAbstractSocket::SocketState state)
 void  MainWindow::onReadyRead()
 {
     qDebug() << "onReadyRead";
-
     QTcpSocket* s = static_cast<QTcpSocket*>(QObject::sender());
     tarjetaActual = s->readAll();
+    qDebug() << tarjetaActual;
+    inicializarJugada();
     qDebug() << QString::fromStdString(tarjetaActual.toStdString());
-    QBuffer buffer;
-    buffer.open(QIODevice::WriteOnly);
-    QString posicion = QString(tarjetaActual);
-    QString imgn = reparto[posicion];
-    QString path = "/home/kendall/Descargas/Emparejados-master/";
-    QString image = path.append(imgn).append(".png");
-    qDebug() << image;
-    QPixmap qp(image);
-    qp.save(&buffer, "PNG");
-    ui->imagen->setPixmap(qp);
-    for (QTcpSocket* socket : sockets){
-        socket ->write(buffer.data().toBase64());
-    }
+}
+void MainWindow::inicializarJugada(){
     if(!jugadaIniciada){
         tarjetaAnterior=tarjetaActual;
         jugadaIniciada=true;
+        QBuffer buffer;
+        buffer.open(QIODevice::WriteOnly);
+        QString posicion = QString(tarjetaActual);
+        QString imgn = reparto[posicion];
+        QString path = "/home/kendall/Descargas/Emparejados-master/";
+        QString image = path.append(imgn).append(".png");
+        qDebug() << image;
+        QPixmap qp(image);
+        qp.save(&buffer, "PNG");
+        ui->imagen->setPixmap(qp);
+        for (QTcpSocket* socket : sockets){
+            socket ->write(buffer.data().toBase64());
+        }
     }
     else {
         definirResultadoParcial();
 
         jugadaIniciada=false;
     }
-
 }
+
 void MainWindow::inicializarJuego(){
     qDebug("inicializarJuego");
     //start turn
     jugadaIniciada=false;
+    juegoIniciado=false;
 
     //Set score
     puntaje=0;
     ui->lblPuntaje->setText(QString::number(puntaje));;
 
     //Set matches counter
-    parejasRestantes=30;
+    parejasRestantes=15;
 
     //Set clock for countdown
-    time.setHMS(0,1,0);
+    time.setHMS(0,0,0);
 
     //Initialize countdown
     ui->cronometro->setText(time.toString("m:ss"));
@@ -134,9 +142,32 @@ void MainWindow::mezclar(QVector<QString> &tarjetas){
     shuffle (tarjetas.begin(), tarjetas.end(), std::default_random_engine(seed));
 }
 void MainWindow::definirResultadoParcial(){
+    QBuffer buffer;
+    buffer.open(QIODevice::WriteOnly);
+    QString posicion = QString(tarjetaActual);
+    QString imgn = reparto[posicion];
+    QString path = "/home/kendall/Descargas/Emparejados-master/";
+    QString image = path.append(imgn).append(".png");
+    qDebug() << image;
+    QPixmap qp(image);
+    qp.save(&buffer, "PNG");
+    QBuffer buffer2;
+    buffer2.open(QIODevice::WriteOnly);
+    QString posicion2 = QString(tarjetaAnterior);
+    QString imgn2 = reparto[posicion2];
+    QString path2 = "/home/kendall/Descargas/Emparejados-master/";
+    QString image2 = path2.append(imgn2).append(".png");
+    qDebug() << image2;
+    QPixmap qp2(image2);
+    qp2.save(&buffer2, "PNG");
     qDebug("parseresult");
+    qDebug(QByteArray::fromStdString(reparto[tarjetaActual].toStdString()));
+    qDebug(QByteArray::fromStdString(reparto[tarjetaAnterior].toStdString()));
     //check if there is a match (the current tile matches the previous tile in the turn)
-    if (reparto[tarjetaActual]==reparto[tarjetaAnterior]){
+    if (buffer.data().toBase64()==buffer2.data().toBase64()){
+        qDebug("conservando");
+        enviarTarjeta();
+        QTimer::singleShot(1000, this, SLOT(enviarPuntos()));
         puntaje+=15;
         ui->lblPuntaje->setText(QString::number(puntaje));
         parejasRestantes--;
@@ -145,15 +176,42 @@ void MainWindow::definirResultadoParcial(){
         definirResultadoFinal();
     }
     else{
+        qDebug("desechando");
+        enviarTarjeta();
+        QTimer::singleShot(1000, this, SLOT(reiniciarTarjetas()));
         puntaje-=5;
         ui->lblPuntaje->setText(QString::number(puntaje));
 
-        //disable the whole tile section so no tiles can be turned during the 1-second "memorizing period"
-
-        //if there is no match, let user memorize tiles and after 1 second hide tiles from current turn so they can be used on another turn
-        QTimer::singleShot(1000, this, SLOT(reiniciarTarjetas()));
     }
 }
+void MainWindow::enviarPuntos(){
+    QString texto = "conservar";
+    for (QTcpSocket* socket : sockets){
+        socket->write(QByteArray::fromStdString(texto.toStdString()));;
+    }
+}
+void MainWindow::reiniciarTarjetas(){
+    QString texto = "desechar";
+    for (QTcpSocket* socket : sockets){
+        socket->write(QByteArray::fromStdString(texto.toStdString()));;
+    }
+}
+void MainWindow::enviarTarjeta(){
+    QBuffer buffer;
+    buffer.open(QIODevice::WriteOnly);
+    QString posicion = QString(tarjetaActual);
+    QString imgn = reparto[posicion];
+    QString path = "/home/kendall/Descargas/Emparejados-master/";
+    QString image = path.append(imgn).append(".png");
+    qDebug() << image;
+    QPixmap qp(image);
+    qp.save(&buffer, "PNG");
+    ui->imagen->setPixmap(qp);
+    for (QTcpSocket* socket : sockets){
+        socket ->write(buffer.data().toBase64());
+    }
+}
+
 void MainWindow::definirResultadoFinal(){
     qDebug("result");
     msgBox.setWindowTitle("Juego terminado");
@@ -173,23 +231,13 @@ void MainWindow::definirResultadoFinal(){
             QCoreApplication::quit();
         }
     }
-    else{
-        if (time.toString()=="00:00:00"){
-            timer->stop();
-            msgBox.setText("Perdiste ;( \n¿Volver a jugar?");
-            if (QMessageBox::Yes == msgBox.exec()){
-                inicializarJuego();
-            }
-            else{
-                QCoreApplication::quit();
-            }
-        }
-    }
 }
 void MainWindow::actualizarCronometro(){
+    if (juegoIniciado){
     qDebug("actCrono");
-    time=time.addSecs(-1);
+    time=time.addSecs(+1);
     ui->cronometro->setText(time.toString("m:ss"));
+    }
 }
 void MainWindow::actualizarEstado(){
     qDebug("ActEst");

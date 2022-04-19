@@ -11,6 +11,7 @@
 #include <QPushButton>
 #include <QMessageBox>
 #include <random>
+#include <QInputDialog>
 
 QT_BEGIN_NAMESPACE
 namespace Ui { class MainWindow; }
@@ -35,11 +36,16 @@ public:
                               "tarjeta29", "tarjeta30"};
     QHash<QString, QString> reparto;
     int puntaje=0;
+    int puntaje2=0;
+    bool jugador1;
     bool jugadaIniciada;
+    bool juegoIniciado;
     QPushButton* tarjetaAnterior;
     QPushButton* tarjetaActual;
     int parejasRestantes;
     QMessageBox msgBox;
+    QString p1name = QInputDialog::getText(this,"Jugador #1","Introduce tu nombre");
+    QString p2name = QInputDialog::getText(this,"Jugador #2","Introduce tu nombre");
 
 public slots:
     void actualizarCronometro();
@@ -47,10 +53,11 @@ public slots:
     void onReading();
     void onSendButtonPressed();
     void tarjetaDescubierta();
-    void mezclar(QVector<QString> &tarjetas);
     void definirResultadoFinal();
     void actualizarEstado();
     void inicializarJuego();
+    void waitServer();
+    void enviarPosicion();
 
 
 
