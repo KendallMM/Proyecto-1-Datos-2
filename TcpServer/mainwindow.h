@@ -4,6 +4,8 @@
 #include <QMainWindow>
 #include <QTcpServer>
 #include <QTcpSocket>
+#include <vector>
+#include <string>
 #include <QTimer>
 #include <QTime>
 #include <QString>
@@ -12,6 +14,17 @@
 #include <QPushButton>
 #include <QMessageBox>
 #include <random>
+#include <iostream>
+#include <string.h>
+#include <vector>
+#include <fstream>
+
+using namespace std;
+using std::fstream;
+using std::ofstream;
+using std::ios;
+
+
 
 QT_BEGIN_NAMESPACE
 namespace Ui { class MainWindow; }
@@ -26,6 +39,8 @@ public:
     ~MainWindow();
     QTimer *timer=new QTimer();
     QTime time;
+    bool jugadaIniciada;
+    bool juegoIniciado;
     QVector<QString> tarjetas{"tarjeta01", "tarjeta02", "tarjeta03", "tarjeta04",
                               "tarjeta05", "tarjeta06", "tarjeta07", "tarjeta08",
                               "tarjeta09", "tarjeta10", "tarjeta11", "tarjeta12",
@@ -35,14 +50,15 @@ public:
                               "tarjeta25", "tarjeta26", "tarjeta27", "tarjeta28",
                               "tarjeta29", "tarjeta30"};
     QHash<QString, QString> reparto;
-    bool jugadaIniciada;
-    bool juegoIniciado;
+    vector <string> Tarjetas;
     QByteArray tarjetaAnterior;
     QByteArray tarjetaActual;
-    QString vector;
+    QString vector1;
     int parejasRestantes;
     QMessageBox msgBox;
     int puntaje=0;
+
+
 
 public slots:
     void onNewConnection();
@@ -59,6 +75,8 @@ public slots:
     void reiniciarTarjetas();
     void enviarTarjeta();
     void enviarPuntos();
+
+
 
 
 

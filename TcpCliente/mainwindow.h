@@ -1,6 +1,5 @@
 #ifndef MAINWINDOW_H
 #define MAINWINDOW_H
-
 #include <QMainWindow>
 #include <QTcpSocket>
 #include <QTimer>
@@ -24,8 +23,8 @@ class MainWindow : public QMainWindow
 public:
     MainWindow(QWidget *parent = nullptr);
     ~MainWindow();
-    QTimer *timer=new QTimer();
-    QTime time;
+    QTimer *timer=new QTimer();//Crea un temporizador.
+    QTime time;//Crea un contador
     QVector<QString> tarjetas{"tarjeta01", "tarjeta02", "tarjeta03", "tarjeta04",
                               "tarjeta05", "tarjeta06", "tarjeta07", "tarjeta08",
                               "tarjeta09", "tarjeta10", "tarjeta11", "tarjeta12",

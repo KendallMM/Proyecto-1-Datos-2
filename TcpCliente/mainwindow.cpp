@@ -7,7 +7,6 @@ MainWindow::MainWindow(QWidget *parent)
     , ui(new Ui::MainWindow),
       socket(this)
 {
-
     ui->setupUi(this);
     connect(timer, SIGNAL(timeout()), this, SLOT(actualizarEstado()));
     socket.connectToHost(QHostAddress("127.0.0.1"), 9999);
@@ -52,7 +51,6 @@ MainWindow::~MainWindow()
 void MainWindow::onReading()
 {
     QByteArray data = socket.readAll();
-    qDebug() << data;
     if(data=="desechar"){
         //return tiles from current turn to the default state (remove backgrounds)
         QPixmap image("/home/kendall/Descargas/Emparejados-master/16.png");
@@ -99,7 +97,6 @@ void MainWindow::onReading()
 }
 void MainWindow::onReadyRead(QPushButton* tarjeta, QByteArray data)
 {
-    qDebug() << "onReadyRead";
     QString encoded = data;
     QPixmap image;
     image.loadFromData(QByteArray::fromBase64(encoded.toLocal8Bit()));
@@ -109,13 +106,11 @@ void MainWindow::onReadyRead(QPushButton* tarjeta, QByteArray data)
 }
 void MainWindow::onSendButtonPressed()
 {
-    qDebug() << "onSendButtonPressed";
     QString tiempo = "tiempo";
     socket.write(QByteArray::fromStdString(tiempo.toStdString()));;
 }
 void MainWindow::tarjetaDescubierta()
 {
-    qDebug("tarjetadesc");
     enviarPosicion();
     if(!jugadaIniciada){
         tarjetaAnterior=tarjetaActual;
@@ -143,7 +138,6 @@ void MainWindow::waitServer(){
     }
 }
 void MainWindow::inicializarJuego(){
-    qDebug() << "inicializarJuego";
     ui->p1->setText(p1name);
     ui->p2->setText(p2name);
     //start turn
@@ -181,14 +175,12 @@ void MainWindow::inicializarJuego(){
     }
 }
 void MainWindow::actualizarCronometro(){
-    qDebug("actCrono");
     if (juegoIniciado){
     time=time.addSecs(+1);
     ui->cronometro->setText(time.toString("m:ss"));
     }
 }
 void MainWindow::definirResultadoFinal(){
-    qDebug("result");
     msgBox.setWindowTitle("Juego terminado");
     msgBox.setIcon(QMessageBox::Information);
     msgBox.setStandardButtons(QMessageBox::Yes);
@@ -208,7 +200,6 @@ void MainWindow::definirResultadoFinal(){
     }
 }
 void MainWindow::actualizarEstado(){
-    qDebug("ActEst");
     actualizarCronometro();
     definirResultadoFinal();
 }
